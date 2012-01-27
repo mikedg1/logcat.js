@@ -1,0 +1,35 @@
+<html>
+<head>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    var socket = io.connect('http://localhost');
+  
+    socket.on('logcat', function (data) {
+      console.log(data["buffer"]);
+      newLogcatLine(data["buffer"]);
+    });
+    
+    function newLogcatLine(line) {
+      var element=  '<tr>' +
+                      '<td class="tag" style="width:50px;">' + line["tag"] + '</td>' +
+                      //Likely want to change the height to fit if we tap? style="height:200px;"
+                      '<td class="date" style="width:100px">' + line["date"] + '</td>' +
+                      '<td class="priority" style="width:100px">' + line["priority"] + '</td>' +
+                      '<td class="process" style="width:100px">' + line["process"] + '</td>' +
+                      '<td class="message" style="width:100px">' + line["message"] + '</td>' +
+                    '</tr>';
+      var container = document.getElementById('logcatBody');
+
+      var new_element = document.createElement('tr');
+      new_element.innerHTML = element;
+      container.insertBefore(new_element, container.firstChild);
+    }
+  </script>
+</head>
+<body>
+<table id="logcat" style="table-layout:fixed">
+  <tbody id="logcatBody">
+  </tbody>
+</table>
+</body>
+</html>

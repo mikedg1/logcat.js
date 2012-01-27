@@ -6,6 +6,9 @@ var app = require('http').createServer(handler)
 
 app.listen(1337);
 
+var buffer = '';
+var sockets = [];
+
 function handler (req, res) {
   fs.readFile(__dirname + '/index.html',
   function (err, data) {
@@ -19,7 +22,7 @@ function handler (req, res) {
   });
 }
 
-function sendMessage(socket, data) {
+function sendMessage(data) {
   //FUCK regex
 
   var logLine = {};
@@ -38,13 +41,27 @@ function sendMessage(socket, data) {
   logLine["tag"] = data.substring(endOf + 1, nextEndOf - 1); //Skip the colon
   logLine["message"] = data.substring(nextEndOf + 1, data.length);;
 
-  socket.emit('logcat', { buffer: logLine });
+  sockets.forEach(function(socket) {
+    socket.emit('logcat', { buffer: logLine });
+    
+  });
 }
 
+
+//Track sockets
 io.sockets.on('connection', function (socket) {
-  //Don't want to create a process everytime, but for now who cares
-  var buffer = '';
-   
+  sockets.push(socket);
+
+  //mayeb end or close, dahl mentioned those in intro
+  socket.on('disconnect', function () {
+    console.log('Disconnected');
+    var i = sockets.indexOf(socket);
+    delete sockets[i];
+  });
+});
+
+
+function createLogcatProcess() {
   var logcat = spawn('adb', ['logcat', '-v', 'threadtime']);
   logcat.stdout.setEncoding('utf8'); //Check that this does anything
   logcat.stdout.on('data', function (data) {
@@ -64,7 +81,7 @@ io.sockets.on('connection', function (socket) {
 //      buffer = ''; //clear buffer
 //    }
     lines.forEach(function(line) {
-      sendMessage(socket, line);
+      sendMessage(line);
       console.log('************LINE');
       //FIXME: Need ot check if ends with '/n' right and add to buffer
     });
@@ -73,11 +90,6 @@ io.sockets.on('connection', function (socket) {
     console.log('*********');
     console.log(data);
   });
-  //FIXME: on disconnect, kill process
-  socket.on('disconnect', function () {
-    console.log('Disconnected');
-    logcat.kill();
-  });
-});
+}
 
-
+createLogcatProcess();
