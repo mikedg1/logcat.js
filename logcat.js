@@ -24,26 +24,30 @@ function handler (req, res) {
 
 function sendMessage(data) {
   //FUCK regex
-
+  //maybe split by spaces up to the 4th space?
   var logLine = {};
-  var endOf = data.indexOf(' ', data.indexOf(' ') + 1);
-  logLine["date"] = data.substring(0, endOf); //01-24 09:57:20.077
-  var nextEndOf = data.indexOf(' ', endOf + 1);
-  logLine["process"] = data.substring(endOf + 1, nextEndOf);
-  endOf = nextEndOf;
-  nextEndOf = data.indexOf(' ', endOf + 1);
-  //Skip one
-  endOf = nextEndOf;
-  nextEndOf = data.indexOf(' ', endOf + 1);
-  logLine["priority"] = data.substring(endOf + 1, nextEndOf);
-  endOf = nextEndOf;
-  nextEndOf = data.indexOf(' ', endOf + 1);
-  logLine["tag"] = data.substring(endOf + 1, nextEndOf - 1); //Skip the colon
-  logLine["message"] = data.substring(nextEndOf + 1, data.length);;
+  var splits = data.split(/ {1,99}/, 6); //only break between 1 and 99 space sin a row
 
+  logLine["date"] = splits[0];
+  logLine["time"] = splits[1];
+  logLine["process"] = splits[2]
+  //Skip one, that isn't process
+  logLine["priority"] = splits[4];
+  logLine["tag"] = splits[5];
+  //String.replace(pattern,string)
+  //so data.replace(   , ''); //replace first 5 peices?
+  //.split(/ {1,99} {1,99} {1,99} {1,99} {1,99}/, 7);
+
+  //"01-24 09:57:20.077 16223 16241 I AmazonAppstore.ApplicationLockerImpl: PERFORMANCE done loading locker".replace(  /\.*s/,'');
+  //FIXME: add this back
+  logLine["message"] = data.replace(/[^ ]* {1,99}[^ ]* {1,99}[^ ]* {1,99}[^ ]* {1,99}[^ ]* {1,99}[^ ]* {1,99}/, '');
+
+  //For debugging, shove the entire line in
+  logLine["fullLine"] = data;
+  
+  //Now send it to every connected socket
   sockets.forEach(function(socket) {
     socket.emit('logcat', { buffer: logLine });
-    
   });
 }
 

@@ -1,6 +1,11 @@
 <html>
 <head>
   <script src="/socket.io/socket.io.js"></script>
+  <!-- <script src="/jquery/jquery-1.7.1.min.js"></script> -->
+  <script src="http:////ajax.googleapis.com/ajax/libs/jquery/1.7/jquery.js"></script>
+  <script src="http://datatables.net/release-datatables/media/js/jquery.dataTables.min.js"></script>
+ <!-- <script src="/DataTables-1.8.2/media/js/jquery.js"></script>
+  <script src="/DataTables-1.8.2/media/js/jquery.dataTables.min.js"></script> -->
   <script>
     var socket = io.connect('http://localhost');
   
@@ -10,10 +15,11 @@
     });
     
     function newLogcatLine(line) {
-      var element=  '<tr>' +
+      /*var element=  '<tr>' +
                       '<td class="tag" style="width:50px;">' + line["tag"] + '</td>' +
                       //Likely want to change the height to fit if we tap? style="height:200px;"
                       '<td class="date" style="width:100px">' + line["date"] + '</td>' +
+                      '<td class="time" style="width:100px">' + line["time"] + '</td>' +
                       '<td class="priority" style="width:100px">' + line["priority"] + '</td>' +
                       '<td class="process" style="width:100px">' + line["process"] + '</td>' +
                       '<td class="message" style="width:100px">' + line["message"] + '</td>' +
@@ -23,13 +29,43 @@
       var new_element = document.createElement('tr');
       new_element.innerHTML = element;
       container.insertBefore(new_element, container.firstChild);
+      */
+      var ar = [];
+      ar[0] = line["tag"];
+      ar[1] = line["date"];
+      ar[2] = line["time"];
+      ar[3] = line["priority"];
+      ar[4] = line["process"];
+      ar[5] = line["message"];
+      
+      $('#logcat').dataTable().fnAddData(ar);
     }
   </script>
 </head>
 <body>
-<table id="logcat" style="table-layout:fixed">
+<table id="logcat" style="width:980px">
+  <thead>
+    <tr>
+    <th>tag</th>
+    <th>date</th>
+    <th>time</th>
+    <th>priority</th>
+    <th>process</th>
+    <th>message</th>
+    </tr>
+  </thead>
   <tbody id="logcatBody">
   </tbody>
 </table>
+<script>
+
+    $(document).ready(function(){
+      $('#logcat').dataTable( {
+		"sScrollY": "400px",
+		"bPaginate": true
+	} );
+    });
+</script>
+
 </body>
 </html>
