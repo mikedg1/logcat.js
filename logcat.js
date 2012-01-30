@@ -2,7 +2,9 @@ var app = require('http').createServer(handler)
   , io = require('socket.io').listen(app)
   , fs = require('fs')
   , util  = require('util')
-  , spawn = require('child_process').spawn;
+  , url = require('url')
+  , spawn = require('child_process').spawn
+  , sutil = require('./sutil');
 
 app.listen(1337);
 
@@ -10,6 +12,18 @@ var buffer = '';
 var sockets = [];
 
 function handler (req, res) {
+  var urlHandler = sutil.getMap[url.parse(req.url).pathname] || sutil.not_found;
+  res.simpleJSON = function(code, obj) {
+    var body = JSON.stringify(obj);
+    res.writeHead(code, {
+    	'Content-Type': 'text/json',
+    	'Content-Length': body.length
+    });
+    res.write(body);
+    res.end();
+  };
+  urlHandler(req, res);
+/*  
   fs.readFile(__dirname + '/index.html',
   function (err, data) {
     if (err) {
@@ -20,6 +34,7 @@ function handler (req, res) {
     res.writeHead(200);
     res.end(data);
   });
+*/
 }
 
 function sendMessage(data) {
