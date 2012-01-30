@@ -33,7 +33,7 @@ sutil.get = function(path, handler) {
 
 sutil.not_found = function(req, res) {
 	var not_found_msg = 'Not Found';
-
+     console.log('Not found: ' + req.url);
 	res.writeHead(404, {
 		'Content-Type': 'text/plain',
 		'Content-Length': not_found_msg.length
@@ -74,6 +74,10 @@ sutil.get('/', sutil.staticHandler('index.html'));
 sutil.get('/jquery.dataTables.min.js', sutil.staticHandler('jquery.dataTables.min.js'));
 sutil.get('/jquery.js', sutil.staticHandler('jquery.js'));
 sutil.get('/style.css', sutil.staticHandler('style.css'));
+sutil.get('/jquery-ui-1.8.17.custom.css', sutil.staticHandler('trontastic/jquery-ui-1.8.17.custom.css'));
+sutil.get('/images/ui-bg_gloss-wave_85_9fda58_500x100.png', sutil.staticHandler('trontastic/images/ui-bg_gloss-wave_85_9fda58_500x100.png'));
+sutil.get('/images/ui-icons_b8ec79_256x240.png', sutil.staticHandler('trontastic/images/ui-icons_b8ec79_256x240.png'));
+sutil.get('/images/ui-bg_glass_40_0a0a0a_1x400.png', sutil.staticHandler('trontastic/images/ui-bg_glass_40_0a0a0a_1x400.png'));
 
 sutil.get('/join', function(req, res) {
 	var nick = qs.parse(url.parse(req.url).query).nick,

@@ -1,5 +1,7 @@
 <html>
 <head>
+  <link rel="stylesheet" type="text/css" href="jquery-ui-1.8.17.custom.css" />
+  
   <script src="/socket.io/socket.io.js"></script>
   <!-- <script src="/jquery/jquery-1.7.1.min.js"></script> -->
   <script src="/jquery.js"></script>
@@ -61,8 +63,9 @@
 
     $(document).ready(function(){
       $('#logcat').dataTable( {
-		"sScrollY": "400px",
-		"bPaginate": true
+		"sScrollY": "200px",
+		"bPaginate": true,
+		"bJQueryUI": true
 	} );
     });
 </script>

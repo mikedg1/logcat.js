@@ -12,7 +12,7 @@ var buffer = '';
 var sockets = [];
 
 function handler (req, res) {
-  var urlHandler = sutil.getMap[url.parse(req.url).pathname] || sutil.not_found;
+  var urlHandler = sutil.getMap[url.parse(req.url).pathname] || sutil.not_found; //FIXME: put generic here
   res.simpleJSON = function(code, obj) {
     var body = JSON.stringify(obj);
     res.writeHead(code, {
