@@ -80,6 +80,14 @@ sutil.get('/images/ui-bg_gloss-wave_85_9fda58_500x100.png', sutil.staticHandler(
 sutil.get('/images/ui-icons_b8ec79_256x240.png', sutil.staticHandler('trontastic/images/ui-icons_b8ec79_256x240.png'));
 sutil.get('/images/ui-bg_glass_40_0a0a0a_1x400.png', sutil.staticHandler('trontastic/images/ui-bg_glass_40_0a0a0a_1x400.png'));
 
+sutil.get('/images/forward_disabled.jpg', sutil.staticHandler('images/forward_disabled.jpg'));
+sutil.get('/images/back_disabled.jpg', sutil.staticHandler('images/back_disabled.jpg'));
+sutil.get('/images/forward_enabled.jpg', sutil.staticHandler('images/forward_enabled.jpg'));
+sutil.get('/images/back_enabled.jpg', sutil.staticHandler('images/back_enabled.jpg'));
+sutil.get('/images/sort_desc.png', sutil.staticHandler('images/sort_desc.png'));
+sutil.get('/images/sort_asc.png', sutil.staticHandler('images/sort_asc.png'));
+sutil.get('/images/sort_both.png', sutil.staticHandler('images/sort_both.png'));
+
 sutil.get('/join', function(req, res) {
 	var nick = qs.parse(url.parse(req.url).query).nick,
 	session;

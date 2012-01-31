@@ -46,7 +46,7 @@
   </script>
 </head>
 <body>
-<table id="logcat" style="width:980px">
+<table class="display" id="logcat" style="width:980px">
   <thead>
     <tr>
     <th>tag</th>
@@ -65,8 +65,7 @@
     $(document).ready(function(){
       $('#logcat').dataTable( {
 		"sScrollY": "200px",
-		"bPaginate": true,
-		"bJQueryUI": true
+		"bPaginate": true
 	} );
     });
 </script>
