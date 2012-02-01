@@ -10,6 +10,7 @@
  <!-- <script src="/DataTables-1.8.2/media/js/jquery.js"></script>
   <script src="/DataTables-1.8.2/media/js/jquery.dataTables.min.js"></script> -->
   <script>
+    var shouldAutoRefresh = true;
     var socket = io.connect('http://localhost');
   
     socket.on('logcat', function (data) {
@@ -41,7 +42,10 @@
       ar[4] = line["process"];
       ar[5] = line["message"];
       
-      $('#logcat').dataTable().fnAddData(ar);
+      //If second parameter is false, then it doesn't refresh immediately... hmmm... maybe do this if not scrolled to the top?
+      //On scroll to top and first page then refresh?
+      //FIXME: actually pause passing adding the data, because the rows show up at the bottom using this method
+      $('#logcat').dataTable().fnAddData(ar, shouldAutoRefresh);
     }
   </script>
 </head>
@@ -65,8 +69,22 @@
     $(document).ready(function(){
       $('#logcat').dataTable( {
 		"sScrollY": "200px",
-		"bPaginate": true
-	} );
+//		"bPaginate": true
+          "bScrollInfinite": true //either this or above, i think infinite works great
+      });
+
+      //Let's us pause scrolling when we scroll down at all
+      $('#logcat').parent().scroll(function() {
+        console.log('scrolling');
+        if ($('#logcat').parent().scrollTop() > 0) {
+          shouldAutoRefresh = false;
+        } else {
+          shouldAutoRefresh = true;
+          //FIXME: should I force a refresh? when we hit 0?      
+          $('#logcat').dataTable();
+        }
+      });
+
     });
 </script>
 
