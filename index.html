@@ -1,107 +1,89 @@
 <html>
+
 <head>
-  <!--<link rel="stylesheet" type="text/css" href="jquery-ui-1.8.17.custom.css" />-->
-  <link rel="stylesheet" type="text/css" href="tables.css" />
-  
-  <script src="/socket.io/socket.io.js"></script>
+        <!-- Styling for data tables -->
+        <link rel="stylesheet" type="text/css" href="tables.css" />
+ <script src="/socket.io/socket.io.js"></script>
   <!-- <script src="/jquery/jquery-1.7.1.min.js"></script> -->
   <script src="/jquery.js"></script>
   <script src="/jquery.dataTables.min.js"></script>
  <!-- <script src="/DataTables-1.8.2/media/js/jquery.js"></script>
   <script src="/DataTables-1.8.2/media/js/jquery.dataTables.min.js"></script> -->
-  <script>
-    var shouldAutoRefresh = true;
-    var socket = io.connect('http://localhost');
-  
-    socket.on('logcat', function (data) {
-      //console.log(data["buffer"]);
-      newLogcatLine(data["buffer"]);
-    });
-    
-    socket.on('logcatHistory', function (data) {
-        var oldShouldRefresh = shouldAutoRefresh;
-        var i = 0;
-        shouldAutoRefresh = false; //Temporarily set this, so we update without locking UI
-        var logHistory = data["buffer"];
-        logHistory.forEach(function(line) {
-            if (line == logHistory[logHistory.length - 1]) {
-                shouldAutoRefresh = oldShouldRefresh; //Reset it
+
+        <script>
+            var shouldAutoRefresh = true; //Tracks whether we want to update the table on new data, this prevents us from jumping back to the top when a new line comes in
+            var socket = io.connect('http://localhost');
+
+            /*
+             * Receives single lines from logcat
+             */
+            socket.on('logcat', function (data) {
+                newLogcatLine(data["buffer"]);
+            });
+            /*
+             * Receives previous lines from logcat
+             * Should only happen when page loads
+             */
+            socket.on('logcatHistory', function (data) {
+                /*
+                 * Magic to speed up adding
+                 * We don't refresh until every line was added
+                 */
+                var oldShouldRefresh = shouldAutoRefresh;
+                shouldAutoRefresh = false; //Temporarily set this, so we update without locking UI
+                var logHistory = data["buffer"];
+                logHistory.forEach(function (line) {
+                    if (line == logHistory[logHistory.length - 1]) {
+                        shouldAutoRefresh = oldShouldRefresh; //Reset it
+                    }
+                    newLogcatLine(line);
+                });
+            });
+
+            function newLogcatLine(line) {
+               
+                //FIXME: actually pause passing adding the data, because the rows show up at the bottom when we dont auto refresh
+                                $('#logcat').dataTable().fnAddData([
+                line["tag"],line["date"],line["time"],line["priority"],line["process"],line["message"]                ], shouldAutoRefresh);
             }
-            newLogcatLine(line);
-            i++;
-        });
+        </script>
+    </head>
     
-    });
-    
-    function newLogcatLine(line) {
-      /*var element=  '<tr>' +
-                      '<td class="tag" style="width:50px;">' + line["tag"] + '</td>' +
-                      //Likely want to change the height to fit if we tap? style="height:200px;"
-                      '<td class="date" style="width:100px">' + line["date"] + '</td>' +
-                      '<td class="time" style="width:100px">' + line["time"] + '</td>' +
-                      '<td class="priority" style="width:100px">' + line["priority"] + '</td>' +
-                      '<td class="process" style="width:100px">' + line["process"] + '</td>' +
-                      '<td class="message" style="width:100px">' + line["message"] + '</td>' +
-                    '</tr>';
-      var container = document.getElementById('logcatBody');
+    <body>
+        <table class="display" id="logcat" style="width: 980px">
+            <thead>
+                <tr>
+                    <th>tag</th>
+                    <th>date</th>
+                    <th>time</th>
+                    <th>priority</th>
+                    <th>process</th>
+                    <th>message</th>
+                </tr>
+            </thead>
+            <tbody id="logcatBody"></tbody>
+        </table>
+        <script>
+            $(document).ready(function () {
+                $('#logcat').dataTable({
+                    "sScrollY": "200px", //FIXME: abritrary
+                    "bScrollInfinite": true //either this or above, i think infinite works great
+                });
 
-      var new_element = document.createElement('tr');
-      new_element.innerHTML = element;
-      container.insertBefore(new_element, container.firstChild);
-      */
-      var ar = [];
-      ar[0] = line["tag"];
-      ar[1] = line["date"];
-      ar[2] = line["time"];
-      ar[3] = line["priority"];
-      ar[4] = line["process"];
-      ar[5] = line["message"];
-      
-      //If second parameter is false, then it doesn't refresh immediately... hmmm... maybe do this if not scrolled to the top?
-      //On scroll to top and first page then refresh?
-      //FIXME: actually pause passing adding the data, because the rows show up at the bottom using this method
-      $('#logcat').dataTable().fnAddData(ar, shouldAutoRefresh);
-    }
-  </script>
-</head>
-<body>
-<table class="display" id="logcat" style="width:980px">
-  <thead>
-    <tr>
-    <th>tag</th>
-    <th>date</th>
-    <th>time</th>
-    <th>priority</th>
-    <th>process</th>
-    <th>message</th>
-    </tr>
-  </thead>
-  <tbody id="logcatBody">
-  </tbody>
-</table>
-<script>
+                //Lets pause scrolling when we scroll down at all
+                $('#logcat').parent().scroll(function () {
+                    console.log('scrolling');
+                    if ($('#logcat').parent().scrollTop() > 0) {
+                        shouldAutoRefresh = false;
+                    } else {
+                        shouldAutoRefresh = true;
+                        //FIXME: should I force a refresh? when we hit 0?      
+                        $('#logcat').dataTable();
+                    }
+                });
 
-    $(document).ready(function(){
-      $('#logcat').dataTable( {
-		"sScrollY": "200px",
-//		"bPaginate": true
-          "bScrollInfinite": true //either this or above, i think infinite works great
-      });
+            });
+        </script>
+    </body>
 
-      //Let's us pause scrolling when we scroll down at all
-      $('#logcat').parent().scroll(function() {
-        console.log('scrolling');
-        if ($('#logcat').parent().scrollTop() > 0) {
-          shouldAutoRefresh = false;
-        } else {
-          shouldAutoRefresh = true;
-          //FIXME: should I force a refresh? when we hit 0?      
-          $('#logcat').dataTable();
-        }
-      });
-
-    });
-</script>
-
-</body>
 </html>
