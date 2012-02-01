@@ -1,7 +1,7 @@
 var app = require('http').createServer(handler)
   , io = require('socket.io').listen(app)
   , fs = require('fs')
-  , util  = require('util')
+//  , util  = require('util')
   , url = require('url')
   , spawn = require('child_process').spawn
   , sutil = require('./sutil');
@@ -10,6 +10,7 @@ app.listen(1337);
 
 var buffer = '';
 var sockets = [];
+var history = [];
 
 function handler (req, res) {
   var urlHandler = sutil.getMap[url.parse(req.url).pathname] || sutil.not_found; //FIXME: put generic here
@@ -42,7 +43,7 @@ function sendMessage(data) {
   //maybe split by spaces up to the 4th space?
   var logLine = {};
   var splits = data.split(/ {1,99}/, 6); //only break between 1 and 99 space sin a row
-
+    //FIXME: need to switch to logcat long to get everything safely
   logLine["date"] = splits[0];
   logLine["time"] = splits[1];
   logLine["process"] = splits[2]
@@ -59,7 +60,11 @@ function sendMessage(data) {
 
   //For debugging, shove the entire line in
   logLine["fullLine"] = data;
-  
+  history.push(logLine);
+  if (history.length > 100) {
+    //FIXME: cut off pieces
+    //Definately need to add this or it chokes the browser.. yikes
+  }
   //Now send it to every connected socket
   sockets.forEach(function(socket) {
     socket.emit('logcat', { buffer: logLine });
@@ -71,6 +76,12 @@ function sendMessage(data) {
 io.sockets.on('connection', function (socket) {
   sockets.push(socket);
 
+    //FIXME: figure out ordering, might wind up adding items more than once?
+    //history.forEach(function(logLine) {
+    //    socket.emit('logcat', { buffer: logLine });
+    //Looping through the history is a bad idea, lets just batch the entire thing up
+        socket.emit('logcatHistory', { buffer: history });
+    //});
   //mayeb end or close, dahl mentioned those in intro
   socket.on('disconnect', function () {
     console.log('Disconnected');

@@ -14,8 +14,23 @@
     var socket = io.connect('http://localhost');
   
     socket.on('logcat', function (data) {
-      console.log(data["buffer"]);
+      //console.log(data["buffer"]);
       newLogcatLine(data["buffer"]);
+    });
+    
+    socket.on('logcatHistory', function (data) {
+        var oldShouldRefresh = shouldAutoRefresh;
+        var i = 0;
+        shouldAutoRefresh = false; //Temporarily set this, so we update without locking UI
+        var logHistory = data["buffer"];
+        logHistory.forEach(function(line) {
+            if (line == logHistory[logHistory.length - 1]) {
+                shouldAutoRefresh = oldShouldRefresh; //Reset it
+            }
+            newLogcatLine(line);
+            i++;
+        });
+    
     });
     
     function newLogcatLine(line) {
