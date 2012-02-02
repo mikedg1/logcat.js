@@ -85,7 +85,12 @@ function createLogcatProcess() {
         var lines = data.split('\n');
         buffer = lines.pop(); //removes last and adds to buffer
         lines.forEach(function (line) {
-            sendMessage(line);
+        console.log("Line:"+ line);
+            if (line != false) {
+                if (line.indexOf("--------- beginning of") != 0) { //If we don't start with this parse it
+                  sendMessage(line);
+                }
+            }
             //console.log('************LINE');
         });
 
