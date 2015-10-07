@@ -1,9 +1,5 @@
-var //app = require('http').createServer(handler),
-    //io = require('socket.io').listen(app),
-    //url = require('url'),
-    spawn = require('child_process').spawn;
-    //sutil = require('./sutil');
-var readline = require('readline')
+var spawn = require('child_process').spawn,
+    readline = require('readline')
 
 var buffer = ''; //Left overs for when we read from stdout/logcat
 
@@ -156,43 +152,15 @@ function processLogLine(line) {
         }
     }
 }    
-function myRead(logcat) {
-    logcat.stdout.setEncoding('utf8'); //Check that this does anything
-    logcat.stdout.on('data', function (data) {
-        //How does eclipse get application name???? ps grep pid?
-        //From logcat -v threadtime
-        //01-24 09:57:20.077 16223 16241 I AmazonAppstore.ApplicationLockerImpl: PERFORMANCE done loading locker
-        //From eclipse
-        //01-24 09:48:07.428: D/NotificationSyndication(23097): onAccessibilityEvent
-        buffer = buffer + data; //Append...
-        var lines = data.split('\n');
-        buffer = lines.pop(); //removes last and adds to buffer
-        //FIXME: turn this into a reusable line based method
-        lines.forEach(function (line) {
-        //console.log("Line:"+ line);
-            //console.log('************LINE');
-            processLogLine(line);
-        });
-
-        //console.log('*********');
-        //console.log(data);
-    });
-}
-function lineRead(logcat) {
-    linereader = readline.createInterface(logcat.stdout, logcat.stdin);
-
-    // Read line by line.
-    //du.stdout.on('data', function (data) {
-    linereader.on('line', function (line) {
-      processLogLine(line);
-    });
-}
 
 function createLogcatProcess() {
     var logcat = spawn('adb', ['logcat', '-v', 'brief']);
 
-    lineRead(logcat);
-    //myRead(logcat); //Butchers crap
+    linereader = readline.createInterface(logcat.stdout, logcat.stdin);
+
+    linereader.on('line', function (line) {
+      processLogLine(line);
+    });
 }
 
 createLogcatProcess();
@@ -201,9 +169,6 @@ function listenForProcessChanges() {
     var ps = spawn('adb', ['shell', 'ps']);
 
     linereader = readline.createInterface(ps.stdout, ps.stdin);
-
-    // Read line by line.
-    //du.stdout.on('data', function (data) {
     linereader.on('line', function (line) {
       var splits = line.split(/[ ,]+/);
       if (splits.length == 9) {
@@ -214,12 +179,10 @@ function listenForProcessChanges() {
               currentPid = pid;
           }
       }
-      //FIXME: put in a map so we can look up by thing!
       //FIXME: can there be many pids?
     });
 
-    //FIXME: wait a bit and rerun!
-    setTimeout(listenForProcessChanges, 5000);
+    setTimeout(listenForProcessChanges, 5000); //Rerun to see if pid changed
     //FIXME: on close make sure we turn this off!
 }
 //>taskkill /F /IM adb.exe <--- in case we mess up big time
