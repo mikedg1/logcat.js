@@ -3,26 +3,40 @@ var //app = require('http').createServer(handler),
     //url = require('url'),
     spawn = require('child_process').spawn;
     //sutil = require('./sutil');
+var readline = require('readline')
 
 var buffer = ''; //Left overs for when we read from stdout/logcat
 
-var package = ""; //FIXME: allow this to be set
+var package = process.argv[2]; //FIXME: allow this to be set
 
-function matchesPackage(token) {
+var COLUMN_COUNT = process.stdout.columns;
+if (!COLUMN_COUNT) COLUMN_COUNT = 160; //debug causes this?
+
+var PADDING = "                                     ";
+var TYPE_SIZE_PADDING = "     "; //FIXME: do this dynamically
+var currentPid = -1;
+
+function matchesPackage(pid) {
     //FIXME: implement
-    if (package.length == 0) {
+    pid = pid.trim();
+
+    if (!package) {
         //Default behavior with no command line
         return true;
     }
     //if token is in named process return true
-    var index = package.find(':');
+    
+    if (pid == currentPid) {
+        return true;
+    }
 
+    return false;
 //  return (token in catchall_package) if index == -1 else (token[:index] in catchall_package)
 }
 
+//Plops the string right justified into the padding
 String.prototype.paddingLeft = function () {
-    var paddingValue = "                                     ";
-    return String(paddingValue + this).slice(-paddingValue.length);
+    return String(PADDING + this).slice(-PADDING.length);
 };
 
 String.prototype.colorize = function (fore, back, bright) {
@@ -86,8 +100,63 @@ function getColor(tag) {
     return color
 }
 
-function createLogcatProcess() {
-    var logcat = spawn('adb', ['logcat', '-v', 'brief']);
+function scootAndPrint(aLine) {
+    //FIXME: I think padding, doesn't tke into account the color characters!!!
+
+    //Skip first line since this is pre-padded, horrible design, but it was quicker
+    var firstRowLength = COLUMN_COUNT; //FIXME: not sure this is correct
+    console.log(aLine.slice(0, firstRowLength)); //For debugging only show multi line!
+
+    var restOfLine = aLine.slice(firstRowLength);
+    var rowLength = COLUMN_COUNT - (PADDING.length + TYPE_SIZE_PADDING.length); //FIXME: move around, this is static, rename too
+    var previousLine = '';
+    while (restOfLine) {
+//console.log(aLine.slice(0, firstRowLength)); //For debugging only show multi line!
+        var paddingSize = PADDING.length + TYPE_SIZE_PADDING.length + 1;
+        var paddedVersion = PADDING + TYPE_SIZE_PADDING + restOfLine; //.slice(-PADDING.length); //Needs to be full line padding!
+        console.log(paddedVersion.substr(0, rowLength - 1)); //without the -1 we go to next line
+
+        previousLine = restOfLine; //FIXME: use this to bump out broken lines, for example in exceptions!
+        restOfLine = restOfLine.slice(rowLength - paddingSize);
+    }
+}
+
+function processLogLine(line) {
+    if (line != false) {
+        if (line.indexOf("--------- beginning of") != 0) { //If we don't start with this parse it
+            var line = line.trim();
+
+            var tag = line.substr(2,line.indexOf('(') - 2);
+            var type = TAG_TYPES[line.substr(0,1)];
+            var firstParenthesis = line.indexOf('): ');
+            var message = line.substr(firstParenthesis + 3);
+            var pid = line.substr(line.indexOf('(') + 2, 4); //FIXME: not sure this sticks to 4 chars long
+            if (matchesPackage(pid)) {
+                //console.log("\033[1;31mbold red text\033[0m\n");
+
+                //FIXME: breaks on parenthesis in tag!
+                //console.log(tag);
+                //console.log(type);
+                //console.log(message);
+                //V/AlarmManager(  468): Pkg: android
+                //console.log(line); //Don't print out the extra '\n'
+                //'\033[1;31mbold red text\033[0m'
+                if (!type) {
+                    //line.substr(0,1);
+                    //FIXME: maybe im reading wrong? was getting some crashes here... hmmm
+                    console.log('*********'+line); //FIXME: Maybe bad buffering?
+                    //FIXME: maybe extra long previous line with a line break?
+                }
+                tagColor = KNOWN_TAGS[tag];
+                if (tagColor == null) {
+                    tagColor = GREEN;
+                }
+                scootAndPrint(tag.paddingLeft().colorize(getColor(tag), BLACK, false) + ' ' + type + ' ' + message);
+            }
+        }
+    }
+}    
+function myRead(logcat) {
     logcat.stdout.setEncoding('utf8'); //Check that this does anything
     logcat.stdout.on('data', function (data) {
         //How does eclipse get application name???? ps grep pid?
@@ -98,43 +167,63 @@ function createLogcatProcess() {
         buffer = buffer + data; //Append...
         var lines = data.split('\n');
         buffer = lines.pop(); //removes last and adds to buffer
+        //FIXME: turn this into a reusable line based method
         lines.forEach(function (line) {
         //console.log("Line:"+ line);
-            if (line != false) {
-                if (line.indexOf("--------- beginning of") != 0) { //If we don't start with this parse it
-                    var line = line.trim();
-                    if (matchesPackage(line)) {
-                        //console.log("\033[1;31mbold red text\033[0m\n");
-                        var tag = line.substr(2,line.indexOf('(') - 2);
-                        var type = TAG_TYPES[line.substr(0,1)];
-                        var firstParenthesis = line.indexOf('): ');
-                        var message = line.substr(firstParenthesis + 3);
-                        //FIXME: breaks on parenthesis in tag!
-                        //console.log(tag);
-                        //console.log(type);
-                        //console.log(message);
-                        //V/AlarmManager(  468): Pkg: android
-                        //console.log(line); //Don't print out the extra '\n'
-                        //'\033[1;31mbold red text\033[0m'
-                        if (!type) {
-                            //line.substr(0,1);
-                            //FIXME: maybe im reading wrong? was getting some crashes here... hmmm
-                            console.log('*********'+line);
-                        }
-                        tagColor = KNOWN_TAGS[tag];
-                        if (tagColor == null) {
-                            tagColor = GREEN;
-                        }
-                        console.log(tag.paddingLeft().colorize(getColor(tag), BLACK, false) + ' ' + type + ' ' + message);
-                    }
-                }
-            }
             //console.log('************LINE');
+            processLogLine(line);
         });
 
         //console.log('*********');
         //console.log(data);
     });
 }
+function lineRead(logcat) {
+    linereader = readline.createInterface(logcat.stdout, logcat.stdin);
+
+    // Read line by line.
+    //du.stdout.on('data', function (data) {
+    linereader.on('line', function (line) {
+      processLogLine(line);
+    });
+}
+
+function createLogcatProcess() {
+    var logcat = spawn('adb', ['logcat', '-v', 'brief']);
+
+    lineRead(logcat);
+    //myRead(logcat); //Butchers crap
+}
 
 createLogcatProcess();
+
+function listenForProcessChanges() {
+    var ps = spawn('adb', ['shell', 'ps']);
+
+    linereader = readline.createInterface(ps.stdout, ps.stdin);
+
+    // Read line by line.
+    //du.stdout.on('data', function (data) {
+    linereader.on('line', function (line) {
+      var splits = line.split(/[ ,]+/);
+      if (splits.length == 9) {
+          var pid = splits[1];
+          var name = splits[8];
+          //console.log(pid+":"+name);
+          if (name == package) {
+              currentPid = pid;
+          }
+      }
+      //FIXME: put in a map so we can look up by thing!
+      //FIXME: can there be many pids?
+    });
+
+    //FIXME: wait a bit and rerun!
+    setTimeout(listenForProcessChanges, 5000);
+    //FIXME: on close make sure we turn this off!
+}
+//>taskkill /F /IM adb.exe <--- in case we mess up big time
+
+if (package) {
+    listenForProcessChanges();
+}
