@@ -1,8 +1,6 @@
 var spawn = require('child_process').spawn,
     readline = require('readline')
 
-var buffer = ''; //Left overs for when we read from stdout/logcat
-
 var package = process.argv[2]; //FIXME: allow this to be set
 
 var COLUMN_COUNT = process.stdout.columns;
@@ -74,7 +72,6 @@ var KNOWN_TAGS = {
     'DEBUG': YELLOW
 };
 
-//FIXME: indent wrapping!
 function getColor(tag) {
     if (KNOWN_TAGS[tag] == null) { //If its not in known tags
         KNOWN_TAGS[tag] = LAST_USED[0]; //Make the color equal to the last used color and add it to known tags
@@ -96,6 +93,7 @@ function getColor(tag) {
     return color
 }
 
+//FIXME: indent wrapping!
 function scootAndPrint(aLine) {
     //FIXME: I think padding, doesn't tke into account the color characters!!!
 
@@ -107,7 +105,6 @@ function scootAndPrint(aLine) {
     var rowLength = COLUMN_COUNT - (PADDING.length + TYPE_SIZE_PADDING.length); //FIXME: move around, this is static, rename too
     var previousLine = '';
     while (restOfLine) {
-//console.log(aLine.slice(0, firstRowLength)); //For debugging only show multi line!
         var paddingSize = PADDING.length + TYPE_SIZE_PADDING.length + 1;
         var paddedVersion = PADDING + TYPE_SIZE_PADDING + restOfLine; //.slice(-PADDING.length); //Needs to be full line padding!
         console.log(paddedVersion.substr(0, rowLength - 1)); //without the -1 we go to next line
@@ -128,20 +125,10 @@ function processLogLine(line) {
             var message = line.substr(firstParenthesis + 3);
             var pid = line.substr(line.indexOf('(') + 2, 4); //FIXME: not sure this sticks to 4 chars long
             if (matchesPackage(pid)) {
-                //console.log("\033[1;31mbold red text\033[0m\n");
-
                 //FIXME: breaks on parenthesis in tag!
-                //console.log(tag);
-                //console.log(type);
-                //console.log(message);
-                //V/AlarmManager(  468): Pkg: android
-                //console.log(line); //Don't print out the extra '\n'
                 //'\033[1;31mbold red text\033[0m'
                 if (!type) {
-                    //line.substr(0,1);
-                    //FIXME: maybe im reading wrong? was getting some crashes here... hmmm
-                    console.log('*********'+line); //FIXME: Maybe bad buffering?
-                    //FIXME: maybe extra long previous line with a line break?
+                    console.log('*********'+line); //This was a eftover from poor stdout reading, leaving to make sure it's still the case
                 }
                 tagColor = KNOWN_TAGS[tag];
                 if (tagColor == null) {
