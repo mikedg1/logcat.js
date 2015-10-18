@@ -1,44 +1,45 @@
 var spawn = require('child_process').spawn,
     readline = require('readline')
 
-var package = process.argv[2]; //FIXME: allow this to be set
+var package = process.argv[2]; 
 
-var COLUMN_COUNT = process.stdout.columns;
-if (!COLUMN_COUNT) COLUMN_COUNT = 160; //debug causes this?
+var COLUMN_COUNT = process.stdout.columns ? process.stdout.columns : 160; //node-debug causes the column count to be null
 
-var PADDING = "                                     ";
+var PADDING_COUNT = 30;
 var TYPE_SIZE_PADDING = "     "; //FIXME: do this dynamically
 var currentPid = -1;
 
 function matchesPackage(pid) {
-    //FIXME: implement
     pid = pid.trim();
 
     if (!package) {
         //Default behavior with no command line
         return true;
     }
-    //if token is in named process return true
     
     if (pid == currentPid) {
         return true;
     }
 
     return false;
-//  return (token in catchall_package) if index == -1 else (token[:index] in catchall_package)
 }
+
+function getRepeatingCharacters(char, length) {
+    return Array(length + 1).join(char);
+}
+var PADDING = getRepeatingCharacters(' ', PADDING_COUNT);
 
 //Plops the string right justified into the padding
 String.prototype.paddingLeft = function () {
     return String(PADDING + this).slice(-PADDING.length);
 };
 
-String.prototype.colorize = function (fore, back, bright) {
+String.prototype.colorize = function (fore, back, foreBright, backBright) {
     //'\033[1;31mbold red text\033[0m'
-    var foreIntensity = 3 + (bright ? 6 : 0);
-    var backIntensity = 4 + (bright ? 6 : 0);
+    var foreIntensity = 3 + (foreBright ? 6 : 0);
+    var backIntensity = 4 + (backBright ? 6 : 0);
 
-    return String('\033[1;'+foreIntensity+fore+';'+backIntensity+back+ 'm' + this + '\033[0m');
+    return String('\033['+foreIntensity+fore+';'+backIntensity+back+ 'm' + this + '\033[0m'); //FIXME: is this correct?
 };
 
 var BLACK = '0';
@@ -52,12 +53,12 @@ var WHITE = '7';
 
 //FIXME: These should be bright and thin!
 var TAG_TYPES = {
-    'V': ' V '.colorize(WHITE, BLACK, true),
-    'D': ' D '.colorize(BLACK, BLUE, true),
-    'I': ' I '.colorize(BLACK, GREEN, true),
-    'W': ' W '.colorize(BLACK, YELLOW, true),
-    'E': ' E '.colorize(BLACK, RED, true),
-    'F': ' F '.colorize(BLACK, RED, true)
+    'V': ' V '.colorize(WHITE, BLACK, false, true),
+    'D': ' D '.colorize(BLACK, BLUE, false, true),
+    'I': ' I '.colorize(BLACK, GREEN, false, false, true),
+    'W': ' W '.colorize(BLACK, YELLOW, false, true),
+    'E': ' E '.colorize(BLACK, RED, false, true),
+    'F': ' F '.colorize(BLACK, RED, false, true)
 }
 
 var LAST_USED = [RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN];
@@ -94,8 +95,8 @@ function getColor(tag) {
 }
 
 //FIXME: indent wrapping!
-function scootAndPrint(aLine) {
-    //FIXME: I think padding, doesn't tke into account the color characters!!!
+function scootAndPrint(aLine, plainMessage) {
+    //FIXME: I think padding doesn't tke into account the color characters!!!
 
     //Skip first line since this is pre-padded, horrible design, but it was quicker
     var firstRowLength = COLUMN_COUNT; //FIXME: not sure this is correct
@@ -103,10 +104,15 @@ function scootAndPrint(aLine) {
 
     var restOfLine = aLine.slice(firstRowLength);
     var rowLength = COLUMN_COUNT - (PADDING.length + TYPE_SIZE_PADDING.length); //FIXME: move around, this is static, rename too
-    var previousLine = '';
+    var previousLine = plainMessage; 
+
     while (restOfLine) {
-        var paddingSize = PADDING.length + TYPE_SIZE_PADDING.length + 1;
-        var paddedVersion = PADDING + TYPE_SIZE_PADDING + restOfLine; //.slice(-PADDING.length); //Needs to be full line padding!
+        //FIXME: tabs get funky :( so maybe replace them all with spaces?
+        var lastLineIndentation = previousLine.length - previousLine.trimLeft().length; //If lines get split, lets indent the second one to match so stuff like long exception lines look better
+        var whitespaceIndentation = previousLine.substr(0, lastLineIndentation); //This catches tabs
+
+        var paddingSize = PADDING.length + TYPE_SIZE_PADDING.length + 1 + lastLineIndentation;
+        var paddedVersion = PADDING + TYPE_SIZE_PADDING + whitespaceIndentation + restOfLine; //.slice(-PADDING.length); //Needs to be full line padding!
         console.log(paddedVersion.substr(0, rowLength - 1)); //without the -1 we go to next line
 
         previousLine = restOfLine; //FIXME: use this to bump out broken lines, for example in exceptions!
@@ -114,6 +120,8 @@ function scootAndPrint(aLine) {
     }
 }
 
+//FIXME: this is a mess, throw some regex at it
+var previousTag = '';
 function processLogLine(line) {
     if (line != false) {
         if (line.indexOf("--------- beginning of") != 0) { //If we don't start with this parse it
@@ -124,6 +132,7 @@ function processLogLine(line) {
             var firstParenthesis = line.indexOf('): ');
             var message = line.substr(firstParenthesis + 3);
             var pid = line.substr(line.indexOf('(') + 2, 4); //FIXME: not sure this sticks to 4 chars long
+
             if (matchesPackage(pid)) {
                 //FIXME: breaks on parenthesis in tag!
                 //'\033[1;31mbold red text\033[0m'
@@ -134,14 +143,22 @@ function processLogLine(line) {
                 if (tagColor == null) {
                     tagColor = GREEN;
                 }
-                scootAndPrint(tag.paddingLeft().colorize(getColor(tag), BLACK, false) + ' ' + type + ' ' + message);
+                var printTag;
+                if (previousTag == tag) {
+                    //Don't show the tag
+                    printTag = getRepeatingCharacters(' ', PADDING_COUNT);
+                } else {
+                    printTag = tag.paddingLeft().colorize(getColor(tag), BLACK, false, false)
+                }
+                scootAndPrint(printTag + ' ' + type + ' ' + message, message); //FIXME: consolidate this, shouldn't be sending in formatted message!
+                previousTag = tag;
             }
         }
     }
 }    
 
 function createLogcatProcess() {
-    var logcat = spawn('adb', ['logcat', '-v', 'brief']);
+    var logcat = spawn('adb', ['logcat', '-v', 'brief']); //FIXME: convert to binary format -B, but i can't actually find specs for that
 
     linereader = readline.createInterface(logcat.stdout, logcat.stdin);
 
@@ -149,8 +166,6 @@ function createLogcatProcess() {
       processLogLine(line);
     });
 }
-
-createLogcatProcess();
 
 function listenForProcessChanges() {
     var ps = spawn('adb', ['shell', 'ps']);
@@ -161,19 +176,21 @@ function listenForProcessChanges() {
       if (splits.length == 9) {
           var pid = splits[1];
           var name = splits[8];
-          //console.log(pid+":"+name);
+
           if (name == package) {
               currentPid = pid;
           }
       }
-      //FIXME: can there be many pids?
+      //FIXME: can there be many pids for a single package?
     });
 
     setTimeout(listenForProcessChanges, 5000); //Rerun to see if pid changed
     //FIXME: on close make sure we turn this off!
 }
-//>taskkill /F /IM adb.exe <--- in case we mess up big time
 
+//We only need to monitor PS if someone sent in a package via commandline
 if (package) {
     listenForProcessChanges();
 }
+
+createLogcatProcess();
